@@ -65,36 +65,6 @@
 		return $success;
 	}
 
-	function aePageBit($name, $val = '')
-	{
-		static $pagebits = array();
-
-		if ($val <> '')
-		{
-			if ($val == 'UNSET')
-			{
-				if (isset($pagebits[$name]))
-				{
-					unset($pagebits[$name]);
-				}
-				return '';
-			}
-			else
-			{
-				$pagebits[$name] = $val;
-				return $val;
-			}
-		}
-		elseif (isset($pagebits[$name]))
-		{
-			return $pagebits[$name];
-		}
-		else
-		{
-			return '';
-		}
-	}
-
 	function aeDoCSP()
 	{
 		// Note by default this allows Google Fonts
