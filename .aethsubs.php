@@ -6,10 +6,12 @@
 	////////////////////////////////////////////////
 	// USER CONFIGURED VALUES
 
-	// Before require_once('your_path_to/.aethsubs.php')
-	// you should set your site specific values
-	// these should ideally be located in a file level
-	// above website document root.
+	// Before require_once('your_path_to/vendor/aetherweb/aethsubs/.aethsubs.php')
+	// you should define the location of your site specific
+	// config file which contains the following values
+	// this should be located in a file level above website
+	// document root. 
+	require_once(SITECONFIG);
 
 	// The values to set in that file are:
 
@@ -17,6 +19,8 @@
 	define('ROOT', "/home/your-site-root/"); // above public_html
 	
 	define('ADMIN_EMAIL', 'your email');
+
+	define('DOCSP', true);
 
 	// if you want to report CSPR violations set a target:
 	define('CSPR_TARGET', 'https://yoursite.com/cspr.php')
@@ -33,7 +37,10 @@
 	*/
 
 	// Optionally set a super secure CSP policy header (recommended)
-	aeDoCSP();
+	if (defined(SETCSP) and SETCSP === true)
+	{
+		aeDoCSP();
+	}
 	////////////////////////////////////////////////
 
 	////////////////////////////////////////////////
@@ -99,7 +106,8 @@
 		$data = file_get_contents('php://input');
 		// Only continue if it’s valid JSON that is not just `null`, `0`, `false` or an
 		// empty string, i.e. if it could be a CSP violation report.
-		if ($data = json_decode($data)) {
+		if (defined(ADMIN_EMAIL) and ($data = json_decode($data))) 
+		{
 			// Prettify the JSON-formatted data.
 			$data = json_encode(
 				$data,
@@ -114,13 +122,13 @@
 			$data = substr($data, 0, 4048);
 			
 			// Mail the CSP violation report.
-			mail(EMAIL, $SUBJECT, $data, 'Content-Type: text/plain;charset=utf-8');
+			mail(ADMIN_EMAIL, $SUBJECT, $data, 'Content-Type: text/plain;charset=utf-8');
 		}
 	}
 
 	function aeShowStuff()
 	{
-		if (DEBUG)
+		if (defined(DEBUG) and DEBUG === true)
 		{
 			print_r($_SERVER);
 
