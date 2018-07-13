@@ -11,7 +11,6 @@
 	// config file which contains the following values
 	// this should be located in a file level above website
 	// document root. 
-	require_once(SITECONFIG);
 
 	// The values to set in that file are:
 
@@ -20,133 +19,155 @@
 	
 	define('ADMIN_EMAIL', 'your email');
 
-	define('DOCSP', true);
+	define('SETCSP', true);
 
 	// if you want to report CSPR violations set a target:
 	define('CSPR_TARGET', 'https://yoursite.com/cspr.php')
 	// Optional
 	define('CSPR_EMAIL_SUBJECT', 'Your Site CSPR Violation Report')
 
-	$SHOW_ERRORS_PARAM = 'what';
-	$SHOW_ERRORS_VALUE = 'ever';
+	// to shift to debug mode, pass in the URL debug=**** 
+	// where **** is your PW choice
+	define('DEBUG_PW', 'your choice');
 
-	$DB_USER = 'test';
-	$DB_PASS = 'test';
-	$DB_HOST = 'test';
+    define( 'DB_NAME',     'my db name' );
+    define( 'DB_USER',     'my db user' );
+    define( 'DB_PASSWORD', 'my db pw' );
+
 
 	*/
 
 	// Optionally set a super secure CSP policy header (recommended)
-	if (defined(SETCSP) and SETCSP === true)
-	{
-		aeDoCSP();
-	}
-	////////////////////////////////////////////////
 
 	////////////////////////////////////////////////
-	// DEBUG MODE OR NOT?
-	if (isset($_GET[$SHOW_ERRORS_PARAM]) and ($_GET[$SHOW_ERRORS_PARAM] == $SHOW_ERRORS_VALUE))
-	{
-		error_reporting(E_ALL);
-		aeIniSet('display_errors', 1);
-		define('DEBUG', true);
-	}
-	else
-	{
-		error_reporting(0);
-		aeIniSet('display_errors', 0);
-		define('DEBUG', false);
-	}
-	////////////////////////////////////////////////
+
+
 
 	////////////////////////////////////////////////
-	// AethSubs functions
+	// AethSubs class definition
 	////////////////////////////////////////////////
 
-	function aeIniSet($key, $val)
+	class ae 
 	{
-		// Attempts to ini_set without causing WARNING if it cannot
-		$success = false;
-		@ini_set($key, $val);
-		if (ini_get($key) == $val) { $success = true; }
-		return $success;
-	}
 
-	function aeDoCSP()
-	{
-		// Note by default this allows Google Fonts
-		$report = '';
-		if (defined(CSPR_TARGET))
+		function __construct() 
 		{
-			$report = "report-uri '".CSPR_TARGET."'; ";
-		}
-		header("Content-Security-Policy: default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self' http://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; manifest-src 'self'; ". $report);
-	}
+			////////////////////////////////////////////////
+			// SET CSP?
+			if (defined(SETCSP) and SETCSP === true)
+			{
+				DoCSP();
+			}
+			////////////////////////////////////////////////
+			// DEBUG MODE OR NOT?
+			if (defined(DEBUG_PW) and (isset($_GET['debug']) and ($_GET['debug'] == DEBUG_PW)))
+			{
+				error_reporting(E_ALL);
+				$this->IniSet('display_errors', 1);
+				define('DEBUG', true);
+			}
+			else
+			{
+				error_reporting(0);
+				$this->IniSet('display_errors', 0);
+				define('DEBUG', false);
+			}
+			////////////////////////////////////////////////
+	    }
 
-	function aeDoCSPR()
-	{
-		// call this function in your //domain/cspr.php file
-		// Specify the email address that receives the reports
-		// in your .my.php config file define('ADMIN_EMAIL', 'your email')
-		
-		// Specify the desired email subject for violation reports.
-		if (defined(CSPR_EMAIL_SUBJECT))
+	    function __destruct() 
+	    {
+	    	//
+	    }
+
+		function IniSet($key, $val)
 		{
-			$SUBJECT = CSPR_EMAIL_SUBJECT;
-		}
-		else
-		{
-			$SUBJECT = $_SERVER['HTTP_HOST'] . ' CSP violation';
+			// Attempts to ini_set without causing WARNING if it cannot
+			$success = false;
+			@ini_set($key, $val);
+			if (ini_get($key) == $val) { $success = true; }
+			return $success;
 		}
 
-		// Send `204 No Content` status code.
-		http_response_code(204);
-
-		// Get the raw POST data.
-		$data = file_get_contents('php://input');
-		// Only continue if it’s valid JSON that is not just `null`, `0`, `false` or an
-		// empty string, i.e. if it could be a CSP violation report.
-		if (defined(ADMIN_EMAIL) and ($data = json_decode($data))) 
+		function DoCSP()
 		{
-			// Prettify the JSON-formatted data.
-			$data = json_encode(
-				$data,
-				JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-			);
+			// Note by default this allows Google Fonts
+			$report = '';
+			if (defined(CSPR_TARGET))
+			{
+				$report = "report-uri '".CSPR_TARGET."'; ";
+			}
+			header("Content-Security-Policy: default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self' http://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; manifest-src 'self'; ". $report);
+		}
 
-			ob_start();
-			print_r($_SERVER);
-			$data .= ob_get_clean();
-
-			// max email size limit...
-			$data = substr($data, 0, 4048);
+		function DoCSPR()
+		{
+			// call this function in your //domain/cspr.php file
+			// Specify the email address that receives the reports
+			// in your .my.php config file define('ADMIN_EMAIL', 'your email')
 			
-			// Mail the CSP violation report.
-			mail(ADMIN_EMAIL, $SUBJECT, $data, 'Content-Type: text/plain;charset=utf-8');
-		}
-	}
+			// Specify the desired email subject for violation reports.
+			if (defined(CSPR_EMAIL_SUBJECT))
+			{
+				$SUBJECT = CSPR_EMAIL_SUBJECT;
+			}
+			else
+			{
+				$SUBJECT = $_SERVER['HTTP_HOST'] . ' CSP violation';
+			}
 
-	function aeShowStuff()
-	{
-		if (defined(DEBUG) and DEBUG === true)
+			// Send `204 No Content` status code.
+			http_response_code(204);
+
+			// Get the raw POST data.
+			$data = file_get_contents('php://input');
+			// Only continue if it’s valid JSON that is not just `null`, `0`, `false` or an
+			// empty string, i.e. if it could be a CSP violation report.
+			if (defined(ADMIN_EMAIL) and ($data = json_decode($data))) 
+			{
+				// Prettify the JSON-formatted data.
+				$data = json_encode(
+					$data,
+					JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+				);
+
+				ob_start();
+				print_r($_SERVER);
+				$data .= ob_get_clean();
+
+				// max email size limit...
+				$data = substr($data, 0, 4048);
+				
+				// Mail the CSP violation report.
+				mail(ADMIN_EMAIL, $SUBJECT, $data, 'Content-Type: text/plain;charset=utf-8');
+			}
+		}
+
+		function ShowStuff()
 		{
-			print_r($_SERVER);
+			if (defined(DEBUG) and DEBUG === true)
+			{
+				print_r($_SERVER);
 
-			echo "<br />\n";
+				echo "<br />\n";
 
-		    echo "<div class='gitbranch'>Current branch: <span>" . aeGitCurrentBranch() . "</span></div>"; 
+			    echo "<div class='gitbranch'>Current branch: <span>" . aeGitCurrentBranch() . "</span></div>"; 
+			}
 		}
+
+		function GitCurrentBranch()
+		{
+		    $stringfromfile = file('.git/HEAD', FILE_USE_INCLUDE_PATH);
+
+		    $firstLine = $stringfromfile[0]; //get the string from the array
+
+		    $explodedstring = explode("/", $firstLine, 3); //seperate out by the "/" in the string
+
+		    return $explodedstring[2]; //get the one that is always the branch name
+		}
+
 	}
 
-	function aeGitCurrentBranch()
-	{
-	    $stringfromfile = file('.git/HEAD', FILE_USE_INCLUDE_PATH);
 
-	    $firstLine = $stringfromfile[0]; //get the string from the array
-
-	    $explodedstring = explode("/", $firstLine, 3); //seperate out by the "/" in the string
-
-	    return $explodedstring[2]; //get the one that is always the branch name
-	}
 
 ?>
