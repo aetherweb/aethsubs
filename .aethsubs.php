@@ -164,7 +164,7 @@
 
 		    $explodedstring = explode("/", $firstLine, 3); //seperate out by the "/" in the string
 
-		    return $explodedstring[2]; //get the one that is always the branch name
+		    return trim($explodedstring[2]); //get the one that is always the branch name
 		}
 
 	}
