@@ -49,28 +49,29 @@
 
 	class ae 
 	{
+		private $debug;
 
 		function __construct() 
 		{
 			////////////////////////////////////////////////
 			// SET CSP?
-			if (defined(SETCSP) and SETCSP === true)
+			if (defined('SETCSP') and SETCSP === true)
 			{
-				DoCSP();
+				$this->DoCSP();
 			}
 			////////////////////////////////////////////////
 			// DEBUG MODE OR NOT?
-			if (defined(DEBUG_PW) and (isset($_GET['debug']) and ($_GET['debug'] == DEBUG_PW)))
+			if (defined('DEBUG_PW') and isset($_GET['debug']) and ($_GET['debug'] == DEBUG_PW))
 			{
 				error_reporting(E_ALL);
 				$this->IniSet('display_errors', 1);
-				define('DEBUG', true);
+				$this->debug = true;
 			}
 			else
 			{
 				error_reporting(0);
 				$this->IniSet('display_errors', 0);
-				define('DEBUG', false);
+				$this->debug = false;
 			}
 			////////////////////////////////////////////////
 	    }
@@ -93,7 +94,7 @@
 		{
 			// Note by default this allows Google Fonts
 			$report = '';
-			if (defined(CSPR_TARGET))
+			if (defined('CSPR_TARGET'))
 			{
 				$report = "report-uri '".CSPR_TARGET."'; ";
 			}
@@ -107,7 +108,7 @@
 			// in your .my.php config file define('ADMIN_EMAIL', 'your email')
 			
 			// Specify the desired email subject for violation reports.
-			if (defined(CSPR_EMAIL_SUBJECT))
+			if (defined('CSPR_EMAIL_SUBJECT'))
 			{
 				$SUBJECT = CSPR_EMAIL_SUBJECT;
 			}
@@ -123,7 +124,7 @@
 			$data = file_get_contents('php://input');
 			// Only continue if it’s valid JSON that is not just `null`, `0`, `false` or an
 			// empty string, i.e. if it could be a CSP violation report.
-			if (defined(ADMIN_EMAIL) and ($data = json_decode($data))) 
+			if (defined('ADMIN_EMAIL') and ($data = json_decode($data))) 
 			{
 				// Prettify the JSON-formatted data.
 				$data = json_encode(
@@ -145,13 +146,13 @@
 
 		function ShowStuff()
 		{
-			if (defined(DEBUG) and DEBUG === true)
+			if ($this->debug)
 			{
 				print_r($_SERVER);
 
 				echo "<br />\n";
 
-			    echo "<div class='gitbranch'>Current branch: <span>" . aeGitCurrentBranch() . "</span></div>"; 
+			    echo "<div class='gitbranch'>Current branch: <span>" . $this->GitCurrentBranch() . "</span></div>"; 
 			}
 		}
 
