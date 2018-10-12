@@ -30,6 +30,7 @@
 	// where **** is your PW choice
 	define('DEBUG_PW', 'your choice');
 
+	define( 'DB_HOST',     'my db host');
     define( 'DB_NAME',     'my db name' );
     define( 'DB_USER',     'my db user' );
     define( 'DB_PASSWORD', 'my db pw' );
@@ -49,7 +50,7 @@
 
 	class ae 
 	{
-		private $debug;
+		private $debug, $ASPSERVER;
 
 		function __construct() 
 		{
@@ -144,10 +145,15 @@
 			}
 		}
 
-		function ShowStuff()
+		function ShowStuff($msg = '')
 		{
 			if ($this->debug)
 			{
+				if ($msg <> '')
+				{
+					echo $msg;
+					echo "<br />\n";
+				}
 				print_r($_SERVER);
 
 				echo "<br />\n";
@@ -164,7 +170,191 @@
 
 		    $explodedstring = explode("/", $firstLine, 3); //seperate out by the "/" in the string
 
-		    return trim($explodedstring[2]); //get the one that is always the branch name
+		    return $explodedstring[2]; //get the one that is always the branch name
+		}
+
+		function Adie($msg)
+		{
+			ShowStuff($msg);
+			die();
+		}
+
+		function DBConnect()
+		{
+			if (isset($this->ASPSERVER))
+			{
+				// Do not re-connect then!
+				return true;
+			}
+			else
+			{
+			    if (!($this->ASPSERVER = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME))) 
+			    {
+			        if ($this->debug) 
+			        { 
+			        	echo "Could not connect to the database at ".DB_HOST."<br>\n";
+					}
+			    }
+			    else
+			    {
+
+			    	return true;
+			    }
+			}
+
+			return false;
+		}
+
+		function APsqlError()
+		{
+			return mysqli_error($this->ASPSERVER);
+		}
+
+		function APFetchObject($res)
+		{
+			return mysqli_fetch_object($res);
+		}
+
+		function APFetchAssoc($res)
+		{
+			return mysqli_fetch_assoc($res);
+		}
+
+		function APFetchRow($res)
+		{
+			return mysqli_fetch_row($res);
+		}
+
+		function APFetchResult($res,$row=0,$col=0)
+		{ 
+		    $numrows = mysqli_num_rows($res); 
+		    if ($numrows && $row <= ($numrows-1) && $row >=0)
+		    {
+		        mysqli_data_seek($res,$row);
+		        $resrow = (is_numeric($col)) ? mysqli_fetch_row($res) : mysqli_fetch_assoc($res);
+		        if (isset($resrow[$col])){
+		            return $resrow[$col];
+		        }
+		    }
+		    return false;
+		}
+
+		function APNumRows($res)
+		{
+		  return mysqli_num_rows($res);
+		}		
+
+		function APquery($query, $params = array())
+		{
+			// Run passed query and params, return handle
+
+			// In case we have not yet
+			$this->DBConnect();
+
+			$statement = mysqli_prepare($this->ASPSERVER, $query) or $this->Adie("Query $query failed prep: " . mysqli_error($this->ASPSERVER));
+
+			// Get the string of data types
+			$types = $this->Agettypes($params);
+
+			// How many params were we actually expecting?
+			$expect = substr_count($query, '?');
+
+			if ($expect <> sizeof($params))
+			{
+				$this->Adie("Expecting $expect params but received " . sizeof($params) . " for query $query");
+			}
+
+			if (strlen($types) > 0)
+			{
+			    # make the references
+			    $bind_arguments = [];
+
+			    // Param one for call is the types of params (there may be none?)
+			    $bind_arguments[] = $types;
+			    foreach ($params as $pkey => $pvalue)
+			    {
+			    	// Cannot allow undefined params ie NULL in some
+			    	// fields but empty string is OK. Fudge all such things?
+			        $bind_arguments[] = &$params[$pkey]; # bind to array ref
+			    }
+
+			    # Bind
+			    call_user_func_array(array($statement, 'bind_param'), $bind_arguments);
+			}
+		    
+		    // Execute    
+		    $statement->execute() or $this->Adie ("Query $query failed: " . mysqli_error($this->ASPSERVER));
+
+		    // Get result(s)
+		    $result = $statement->get_result(); # get results
+
+		    // Destroy now un-needed statement?
+		    $statement->close();
+
+		    return $result;
+		}
+
+		function mysqlDeleteTables($prefix)
+		{
+			// deletes all tables matching specific prefix
+			echo "DANGEROUS REQUEST - DOUBLE CHECK TABLE LIST - THIS IS CURRENTLY DISABLED";
+			$q = "SELECT table_name FROM information_schema.tables WHERE table_name LIKE CONCAT(?,'%') AND table_schema=?";
+			$res = $this->APquery($q, array($prefix, DB_NAME));
+			while ($tname = $this->APFetchRow($res))
+			{
+				$tname = $tname[0];
+				echo $tname . "<br />\n";
+				//$this->APquery("DROP TABLE $tname");
+			}
+		}
+
+		function mysqlDuplicateTables($oldprefix, $newprefix, $exclude = '/donotdup/')
+		{
+			// Duplicates all tables matching prefix, replacing
+			// the prefix with the new prefix in the duplicate
+			$q = "SELECT table_name FROM information_schema.tables WHERE table_name LIKE CONCAT(?,'%') AND table_schema=?";
+			$res = $this->APquery($q, array($oldprefix, DB_NAME));
+			while ($tname = $this->APFetchRow($res))
+			{
+				$tname = $tname[0];
+				if (!preg_match($exclude, $tname))
+				{
+					echo "duplication of " . $tname;
+					$ntname = preg_replace("/$oldprefix/", $newprefix, $tname);
+					echo " to $ntname<br>\n";
+					$this->mysqlDuplicateTable($tname, $ntname);
+					echo "done<br>\n";
+				}
+				else
+				{
+					echo "not duping as $exclude matched " . $tname;
+				}
+			}
+		}
+
+		function mysqlDuplicateTable($old, $new)
+		{
+			$this->APquery("CREATE TABLE $new LIKE $old");
+			$this->APquery("INSERT $new SELECT * FROM $old");
+		}
+
+		function Agettypes($params = array())
+		{
+			$types = '';
+			if (sizeof($params)>0) {                        
+				foreach($params as $param) {        
+				    if(is_int($param)) {
+				        $types .= 'i';              //integer
+				    } elseif (is_float($param)) {
+				        $types .= 'd';              //double
+				    } elseif (is_string($param)) {
+				        $types .= 's';              //string
+				    } else {
+				        $types .= 'b';              //blob and unknown
+				    }
+				}
+			}
+			return $types;
 		}
 
 	}
