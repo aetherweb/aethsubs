@@ -33,7 +33,7 @@
 	define( 'DB_HOST',     'my db host');
     define( 'DB_NAME',     'my db name' );
     define( 'DB_USER',     'my db user' );
-    define( 'DB_PASSWORD', 'my db pw' );
+    define( 'DB_PASS',     'my db pw' );
 
 
 	*/
@@ -50,10 +50,15 @@
 
 	class ae 
 	{
-		private $debug, $ASPSERVER;
+		private $debug, $ASPSERVER, $field_defs;
+		public $data, $Aobject, $Avalue;
 
 		function __construct() 
 		{
+			////////////////////////////////////////////////
+			// MISC INSTANTIATIONS
+			$this->field_defs = array();
+			$this->data = $_POST; if (sizeof($this->data) <= 0) { $this->data = $_GET; }
 			////////////////////////////////////////////////
 			// SET CSP?
 			if (defined('SETCSP') and SETCSP === true)
@@ -62,7 +67,7 @@
 			}
 			////////////////////////////////////////////////
 			// DEBUG MODE OR NOT?
-			if (defined('DEBUG_PW') and isset($_GET['debug']) and ($_GET['debug'] == DEBUG_PW))
+			if (defined('DEBUG_PW') and isset($this->data['debug']) and ($this->data['debug'] == DEBUG_PW))
 			{
 				error_reporting(E_ALL);
 				$this->IniSet('display_errors', 1);
@@ -75,12 +80,22 @@
 				$this->debug = false;
 			}
 			////////////////////////////////////////////////
+
 	    }
 
 	    function __destruct() 
 	    {
 	    	//
 	    }
+
+		function Avalidateemail($email)
+		{
+		   // Create the syntactical validation regular expression
+		   $regexp = "|^([_a-z0-9-]+)(\.[_a-z0-9-]+)*@([a-z0-9-]+)(\.[a-z0-9-]+)*(\.[a-z]{2,4})$|i";
+
+		   // Validate the syntax
+		   return preg_match($regexp, $email);
+		}	    
 
 		function IniSet($key, $val)
 		{
@@ -231,7 +246,7 @@
 		    if ($numrows && $row <= ($numrows-1) && $row >=0)
 		    {
 		        mysqli_data_seek($res,$row);
-		        $resrow = (is_numeric($col)) ? mysqli_fetch_row($res) : mysqli_fetch_assoc($res);
+		        $resrow = (is_numeric($col)) ? APFetchRow($res) : APFetchAssoc($res);
 		        if (isset($resrow[$col])){
 		            return $resrow[$col];
 		        }
@@ -242,7 +257,12 @@
 		function APNumRows($res)
 		{
 		  return mysqli_num_rows($res);
-		}		
+		}
+
+		function APInsertId()
+		{
+			return mysqli_insert_id($this->ASPSERVER);
+		}
 
 		function APquery($query, $params = array())
 		{
@@ -293,6 +313,28 @@
 
 		    return $result;
 		}
+
+		function APoneobject($query, $params = array())
+		{
+		  $qresult = $this->APquery($query, $params);
+		  return ($this->Aobject = mysqli_fetch_object($qresult));
+		}
+
+		function APonevalue($query, $params = array())
+		{
+			$qresult = $this->APquery($query, $params);
+
+			$fresult = ($row = $this->APFetchRow($qresult));
+			if ($fresult)
+			{
+				$this->Avalue = $row[0];
+			}
+			else
+			{
+				unset($this->Avalue);
+			}
+			return $fresult;
+		}		
 
 		function mysqlDeleteTables($prefix)
 		{
@@ -356,6 +398,291 @@
 			}
 			return $types;
 		}
+
+		function GetFieldDefinitions ($tablename)
+		{
+		  // Ensure tablename is A-Za-z0-9-_
+		  $tablename = preg_replace("/[^a-zA-Z0-9-_]/", "", $tablename);
+		  if (!isset($this->field_defs[$tablename]))
+		  {
+			  $result = APquery("SHOW FIELDS FROM $tablename");
+			  while ($field = APFetchObject($result))
+			  {
+				$this->field_defs[$tablename][$field->Field] = $field->Type;
+			  }
+		  }
+		  return $this->field_defs[$tablename];
+		}	
+
+		function AhtmlDBFormField ($fieldname, $tablename, $default, $width = '', $rows = '', $namesuffix = '')
+		{
+		  # attempts to automatically determine the correct type of form field by querying the
+		  # table for its description of the passed field name. Then creates an html form field
+		  # for that and returns it. Optionally pass a width value to use.
+		  $field_defs = GetFieldDefinitions($tablename);
+
+		  if (($this->data[$fieldname . $namesuffix] <> '') and ($this->data[$fieldname . $namesuffix] <> $default))
+		  {
+		    $default = $this->data[$fieldname . $namesuffix];
+		  }
+
+		  # Is this field in the list of errors? If so, give it a red border!
+		  $class = '';
+		  if ($this->data[$fieldname . "ERROR"] > 0)
+		  {
+		  	$class = 'redborder';
+		  }
+
+		  return AinputHTML($fieldname, $default, $field_defs[$fieldname], $width, $rows, $class, $namesuffix);
+		}	
+
+		function AinsertRecord ($tablename, $data = null)
+		{		  
+		  // Cleanup tablename
+		  $tablename = preg_replace("/[^a-zA-Z0-9-_]/", "", $tablename);
+
+		  # optionally pass an array of the values
+		  # you have in the $data param. If you pass this, the CGI params will be ignored.
+
+		  # 1. Get a list of all fields in this table, along with their info
+		  $field_definitions = $this->GetFieldDefinitions($tablename);
+
+		  # 2. Go through the field list from the field definitions. If we
+		  # have a param entry for that field def then add the quoted
+		  # value to a list and add the field name to another list...
+		  # take care as we may have a blank param that should go in as
+		  # blank rather than as the default table value.
+		  
+		  $params = array();
+		  if (!isset($data))
+		  {
+		  	$data = $this->data;
+		  }
+		  elseif (is_object($data))
+		  {
+		  	$data = get_object_vars($data);
+		  }
+		  $params = array_keys($data);
+
+		  $field_names   = array();
+		  $quoted_values = array();
+		  $values        = array();
+		  $questionmarks = array();
+		  $fields        = array();
+		  
+		  foreach (array_keys($field_definitions) as $field)
+		  {
+		    if (in_array($field, $params))
+		    {
+		      array_push ($field_names, '`' . $field . '`');
+		      $value = '';
+		      $value = $data[$field];
+			  array_push ($quoted_values, "'" . $this->Ascape($value) . "'");
+			  array_push ($values, $value . "");
+			  array_push ($questionmarks, "?");
+		    }
+		  }
+
+		  # 4. Insert the new record in a way that our last_insert_id is useful
+		  $sql = "INSERT INTO $tablename (" . join(",",$field_names)   . ") VALUES (" . join(",",$questionmarks) . ")";
+		  $this->APquery($sql, $values);
+
+		  return $this->APInsertId();
+		}
+
+		function AupdateRecord ($tablename, $clause, $data = null)
+		{
+			// THIS FUNCTION MUST NOT BE CALLED WITH A CLAUSE 
+			// CONTAINING TAINTED DATA! YOU MUST CAST CLAUSE VARS!
+		  
+		  // Cleanup tablename
+		  $tablename = preg_replace("/[^a-zA-Z0-9-_]/", "", $tablename);
+
+		  # optionally pass an array of the values
+		  # you have in the $data param. If you pass this, the CGI params will be ignored.
+
+		  # 1. Get a list of all fields in this table, along with their info
+		  $field_definitions = $this->GetFieldDefinitions($tablename);
+
+		  # 2. Go through the field list from the field definitions. If we
+		  # have a param entry for that field def then add the quoted
+		  # value to a list and add the field name to another list...
+		  # take care as we may have a blank param that should go in as
+		  # blank rather than as the default table value.
+		  
+		  $params = array();
+		  if (!isset($data))
+		  {
+		  	$data = $this->data;
+		  }
+		  $vars = array();
+		  if (is_object($data))
+		  {
+		  	$vars   = get_object_vars($data);
+		  	$params = array_keys($vars);
+		  }
+		  elseif (is_array($data))
+		  {
+		  	$vars   = $data;
+		    $params = array_keys($data);
+		  }
+		  else
+		  {
+		  	Adie("\$data is of unexpected type.");
+		  }
+
+		  $sqls = array();
+		  $vals = array();
+		  foreach (array_keys($field_definitions) as $field)
+		  {
+		    if (in_array($field, $params))
+		    {
+			  array_push($sqls, '`' . "$field" . '`' . "=?");
+			  array_push($vals, $vars[$field]);
+		    }
+		  }
+
+		  # 4. Insert the new record in a way that our last_insert_id is useful
+		  $sql = "UPDATE $tablename SET " . join(",",$sqls)   . " WHERE $clause";
+		  
+		  $this->APquery($sql,$vals);
+		  return 1;
+		}
+
+
+		function AhtmlTableRecordSelect($table, $show_field, $value_field, $form_field_name, $selected_value = '', $filter = '', $show_field_sql = '', $showblank = 1, $onChange='', $sort = '')
+		{
+			// THIS HAS NOT BEEN SANITISED! TODO!
+
+			# default to passed value, override for form data if present
+			if ($this->data[$form_field_name] <> '') { $selected_value = $this->data[$form_field_name]; }
+			
+			# been passed a filter?
+			if ($filter <> '')
+			{
+			  $filter = " WHERE $filter ";
+			}
+			
+			# Been passed some show field sql?
+			if ($show_field_sql == '')
+			{
+			  $show_field_sql = $show_field;
+			}
+			
+			$order_by = " ORDER BY $show_field ASC ";
+			if ($sort <> '')
+			{
+				$order_by = " ORDER BY $sort ";
+			}
+			
+			# create a dropdown selection box based on all values in the specified table...
+			$result = $this->APquery("SELECT $value_field,$show_field_sql as $show_field FROM $table $filter $order_by");
+			$html  = "<select name='$form_field_name' onchange='$onChange'>\n";
+			$selected = ''; if ($selected_value == '') { $selected = 'selected="selected"'; }
+			if ($showblank)
+			{
+				$html .= "<option value='' $selected></option>\n";
+			}
+			while ($item = $this->APFetchObject($result))
+			{
+			  # this one selected?
+			  $selected = '';
+			  if ($selected_value == $item->$value_field) { $selected = 'selected="selected"'; }
+			  $html .= "<option value='".$item->$value_field."' $selected>".$item->$show_field."</option>\n";
+			}
+			$html .= "</select>";
+			return $html;
+		} 
+
+		function AinputHTML ($field_name, $value, $field_def, $ie_display_width = 20, $ie_rows = 5, $class = '', $namesuffix = '', $noslctblank = 0)
+		{
+		  # So what are our possibilities for field_def?
+
+		  $html = '';
+		  if (strtolower($field_def) == 'text')
+		  {
+		    # Do a text area box thing
+		    $html = $this->Ahtmltextarea($field_name . $namesuffix, $value, $class, $ie_display_width, $ie_rows, 'default');
+		  }
+		  elseif (preg_match("/datetime/i",$field_def))
+		  {
+		    $html = $this->AhtmlInput($field_name . $namesuffix, $value, $class, 20, 19, ((preg_match("/password/i", $field_name)) ? 1 : 0), '');
+		  }
+		  elseif (preg_match("/date/i",$field_def))
+		  {
+		    $html = $this->AhtmlInput($field_name . $namesuffix, $value, $class, 11, 10, ((preg_match("/password/i", $field_name)) ? 1 : 0), '');
+		  }
+		  elseif (preg_match("/int\((.+)\)/", $field_def, $matches))
+		  {
+		    $fieldwidth = $matches[1];
+		    $html = $this->AhtmlInput($field_name . $namesuffix, $value, $class, $fieldwidth + 1, $fieldwidth, ((preg_match("/password/i", $field_name)) ? 1 : 0), '');
+		  }
+		  elseif (preg_match("/decimal\((\d+),(\d+)\)/", $field_def, $matches))
+		  {
+		    $fieldwidth = $matches[1] + $matches[2] + 1;
+		    $html = $this->AhtmlInput($field_name . $namesuffix, $value, $class, $fieldwidth + 1, $fieldwidth, ((preg_match("/password/i", $field_name)) ? 1 : 0), '');
+		  }
+		  elseif (preg_match("/char\((.+)\)/", $field_def, $matches))
+		  {
+		    # $1 now contains the max length for us! Do a password field if necessary
+		    # If ie_display_width is greater than $1 then use $1 instead!
+		    #if ($ie_display_width > $matches[0]) { $ie_display_width = $matches[0]; }
+		    $html = $this->AhtmlInput($field_name . $namesuffix, $value, $class, $ie_display_width, $matches[1], ((preg_match("/password/i", $field_name)) ? 1 : 0), '');
+		  }
+		  elseif (preg_match("/enum\((.+)\)/", $field_def, $matches))
+		  {
+		    # It's an ENUM, possible values now in $1
+		    $menu_items = explode(",",$matches[1]);
+			$stripped_menu_items = array();
+			foreach ($menu_items as $item) 
+			{ 
+			  $item = preg_replace("/'/", "", $item);
+			  array_push($stripped_menu_items, $item); 
+			}
+			
+			$top_item_name  = ' ';
+			$top_item_value = '';
+			if ($noslctblank)
+			{
+				$top_item_name = array_shift($stripped_menu_items);
+				$top_item_value = $top_item_name;
+			}
+			# $name, $selected, $top_item_name, $top_item_value, $onchange, $items
+		    $html = $this->Ahtmlselect($field_name . $namesuffix, $value, $top_item_name, $top_item_value, "", $stripped_menu_items);
+		  }
+		  elseif (preg_match("/set\((.+)\)/", $field_def, $matches))
+		  {
+		    # It's a set, do a multi-select box
+			print "TODO!";
+			$html = "TODO!";
+		  }
+		  elseif (preg_match("/blob/", $field_def))
+		  {
+		    # Let's assume it's an image field
+			print "TODO!";
+			$html = "TODO!";	
+		    #$html = AethSubs::filefieldHTML($field_name, $value, $class);
+		  }
+		  else
+		  {
+		    # Default, do a standard text box, unless the field is called password!
+		    $html = $this->AhtmlInput($field_name . $namesuffix, $value, $class, $ie_display_width, '', ((preg_match("/password/i", $field_name)) ? 1 : 0), '');
+		  }
+
+		  return $html;
+		}	
+
+		function Ahtmltextarea ($name, $value='', $class='', $width='', $rows='', $wrap='virtual', $extrajs='')
+		{
+		  return "<textarea name='$name' cols='$width' rows='$rows' wrap='$wrap' class='$class' $extrajs>$value</textarea>";
+		}
+
+		function Ahtmlcheckbox ($name, $checked = 0, $checkedvalue = '', $class = '', $extrajs = '')
+		{
+		  $checked_string = ($checked) ? "checked" : "";
+		  return "<input type='checkbox' name='$name' value='$checkedvalue' $extrajs $checked_string />";
+		}
+
 
 	}
 

@@ -34,9 +34,10 @@ Containing eg.
 	define('DEBUG_PW', 'your choice');
 
 	// Database credentials
+    define( 'DB_HOST',     'my db host' );
     define( 'DB_NAME',     'my db name' );
     define( 'DB_USER',     'my db user' );
-    define( 'DB_PASSWORD', 'my db pw' );
+    define( 'DB_PASS',     'my db pw' );
 
     // now include aethsubs
 
