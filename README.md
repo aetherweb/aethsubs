@@ -25,27 +25,27 @@ Containing eg.
 	define('SETCSP', true);
 
 	// if you want to report CSPR violations set a target:
-	define('CSPR_TARGET', 'https://yoursite.com/cspr.php')
+	define('CSPR_TARGET', 'https://yoursite.com/cspr.php');
 	// Optional
-	define('CSPR_EMAIL_SUBJECT', 'Your Site CSPR Violation Report')
+	define('CSPR_EMAIL_SUBJECT', 'Your Site CSPR Violation Report');
 
 	// to shift to debug mode, pass in the URL debug=**** 
 	// where **** is your PW choice
 	define('DEBUG_PW', 'your choice');
 
 	// Database credentials
-    define( 'DB_HOST',     'my db host' );
-    define( 'DB_NAME',     'my db name' );
-    define( 'DB_USER',     'my db user' );
-    define( 'DB_PASS',     'my db pw' );
+        define( 'DB_HOST',     'my db host' );
+        define( 'DB_NAME',     'my db name' );
+        define( 'DB_USER',     'my db user' );
+        define( 'DB_PASS',     'my db pw' );
 
-    // now include aethsubs
+        // now include aethsubs
 
-    require_once(ROOT . "vendor/aetherweb/aethsubs/aethsubs.php");
+        require_once(ROOT . "vendor/aetherweb/aethsubs/aethsubs.php");
 
-    // and instantiate an instance of ae
+        // and instantiate an instance of ae
 
-    $ae = new ae();
+        $ae = new ae();
 
 
 Then include your config file into the top of all site PHP files eg
