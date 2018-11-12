@@ -88,6 +88,133 @@
 	    	//
 	    }
 
+		# image resizer to resize an image
+		function AresizeImage($maxwidth, $maxheight, $src_filename, $dest_filename, $forceup = 1, $verbose = 0)
+		{
+			// By default, this will force the image UP to the dimensions specified. If $forceup is zero tho
+			// then it will only resize if either dimension is above the limit
+			
+			if ($verbose) { $verror .= "started<br/>\n"; }
+			
+			// Get new sizes
+			if (!file_exists($src_filename))
+			{
+				if ($verbose) { $verror.= "file not exists $src_filename<br/>\n"; }
+				$error = "File does not exist: $src_filename";
+			}
+			else
+			{
+				if ($verbose) { $verror.= "getting size of $src_filename<br/>\n"; }
+			
+				list($width, $height, $type, $attr) = getimagesize($src_filename);
+				$error = '';
+				if (($width > 0) and ($height > 0))
+				{
+					if ($verbose) { $verror.= "got src image with width $width, height $height<br/>\n"; }
+
+					if (($forceup) or ($width > $maxwidth) or ($height > $maxheight))
+					{
+						$scale     = min(($maxwidth/$width),($maxheight/$height));
+						$newwidth  = round($width * $scale,0);
+						$newheight = round($height * $scale, 0);
+					}
+					else
+					{
+						$scale = 1;
+						$newwidth = $width;
+						$newheight = $height;
+					}
+					// Load
+					if ($verbose) { $verror.= "about to do imagecreatetruecolor with size: $newwidth, $newheight<br/>\n"; }
+
+					$dest   = imagecreatetruecolor($newwidth, $newheight);
+					
+					if ($verbose) { $verror.= "created. Now grab src image into gd image for working on...<br/>\n"; }
+					
+					if ($src = imagecreatefromstring(file_get_contents($src_filename)))
+					{
+						// Cool
+					}
+					else   
+					{ 
+						if ($verbose) { $verror.= "unrecognised file type. Failing with error.<br/>\n"; }
+
+						$error .= "Unrecognised image file type ($type) received.<br />\n"; 
+					}
+
+					if (!$error)
+					{
+						if (!$src)
+						{
+						  if ($verbose) { $verror.= "failed to read src file $src_filename<br/>\n"; }
+						  $error .= "Problem reading source file $src_filename<br />\n";
+						}
+						else
+						{
+							if ($verbose) { $verror.= "about to use imagecopyresampled to resize the image.<br/>\n"; }
+
+							// Resize
+							if (imagecopyresampled($dest, $src, 0, 0, 0, 0, $newwidth, $newheight, $width, $height))
+							{
+							  # successful resize complete
+							  	if ($verbose) { $verror.= "imagecopyresampled worked fine<br/>\n"; }
+
+							}
+							else
+							{
+							  # problem resizing!
+							  	if ($verbose) { $verror.= "imagecopyresampled failed :(<br/>\n"; }
+
+							  $error .= "ERROR RESIZING IMAGE!<br />\n";
+							}
+						
+							// Output
+								if ($verbose) { $verror.= "kicking out the file as a jpeg with 90 quality...<br/>\n"; }
+
+							if (imagejpeg($dest,$dest_filename,90))
+							{
+							  # fine
+							  	if ($verbose) { $verror.= "kicked it out no problem<br/>\n"; }
+
+							}
+							else
+							{
+							  # Failed to write the file!
+							  	if ($verbose) { $verror.= "failed to kick it out to $dest_filename<br/>\n"; }
+
+							  $error .= "ERROR WRITING TO $dest_filename<br />\n";
+							}
+							
+							// Destroy source image
+								if ($verbose) { $verror.= "destroying the src image object<br/>\n"; }
+
+							imagedestroy($src);
+							
+								if ($verbose) { $verror.= "destroyed it<br/>\n"; }
+						}
+					}		
+					
+					// Destroy the images...
+					if ($verbose) { $verror.= "destroying the dest image object<br/>\n"; }
+
+					imagedestroy($dest);
+					
+					if ($verbose) { $verror.= "destroyed it<br/>\n"; }
+				}
+				else
+				{
+					if ($verbose) { $verror.= "error decoding src image $src_filename<br/>\n"; }
+				  	$error .= "Error decoding source image.<br />\n";
+				}
+			}
+			
+			if ($verbose)
+			{
+				mail('jeffsnox@gmail.com', 'IM process results', $verror . ' ' . $error);
+			}
+			return $error;
+		}
+
 		function Avalidateemail($email)
 		{
 		   // Create the syntactical validation regular expression
