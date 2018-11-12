@@ -546,7 +546,7 @@
 		  # attempts to automatically determine the correct type of form field by querying the
 		  # table for its description of the passed field name. Then creates an html form field
 		  # for that and returns it. Optionally pass a width value to use.
-		  $field_defs = GetFieldDefinitions($tablename);
+		  $field_defs = $this->GetFieldDefinitions($tablename);
 
 		  if (($this->data[$fieldname . $namesuffix] <> '') and ($this->data[$fieldname . $namesuffix] <> $default))
 		  {
@@ -560,7 +560,7 @@
 		  	$class = 'redborder';
 		  }
 
-		  return AinputHTML($fieldname, $default, $field_defs[$fieldname], $width, $rows, $class, $namesuffix);
+		  return $this->AinputHTML($fieldname, $default, $field_defs[$fieldname], $width, $rows, $class, $namesuffix);
 		}	
 
 		function AinsertRecord ($tablename, $data = null)
