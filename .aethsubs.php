@@ -797,7 +797,14 @@
 		  }
 
 		  return $html;
-		}	
+		}
+
+		function AhtmlInput ($name, $value, $class = '', $iewidth='', $maxlength='', $password = 0, $extrajs = '', $placeholder = '')
+		{
+		  $type = 'text';
+		  if ($password) { $type = 'password'; }
+		  return "<input type=\"$type\" name=\"$name\" id=\"$name\" value=\"$value\" size=\"$width\" maxlength=\"$maxlength\" class=\"$class\" placeholder=\"$placeholder\" $extrajs />";
+		}
 
 		function Ahtmltextarea ($name, $value='', $class='', $width='', $rows='', $wrap='virtual', $extrajs='')
 		{
