@@ -373,7 +373,7 @@
 		    if ($numrows && $row <= ($numrows-1) && $row >=0)
 		    {
 		        mysqli_data_seek($res,$row);
-		        $resrow = (is_numeric($col)) ? APFetchRow($res) : APFetchAssoc($res);
+		        $resrow = (is_numeric($col)) ? $this->APFetchRow($res) : $this->APFetchAssoc($res);
 		        if (isset($resrow[$col])){
 		            return $resrow[$col];
 		        }
@@ -532,8 +532,8 @@
 		  $tablename = preg_replace("/[^a-zA-Z0-9-_]/", "", $tablename);
 		  if (!isset($this->field_defs[$tablename]))
 		  {
-			  $result = APquery("SHOW FIELDS FROM $tablename");
-			  while ($field = APFetchObject($result))
+			  $result = $this->APquery("SHOW FIELDS FROM $tablename");
+			  while ($field = $this->APFetchObject($result))
 			  {
 				$this->field_defs[$tablename][$field->Field] = $field->Type;
 			  }
