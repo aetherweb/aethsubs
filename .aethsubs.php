@@ -604,7 +604,6 @@
 		      array_push ($field_names, '`' . $field . '`');
 		      $value = '';
 		      $value = $data[$field];
-			  array_push ($quoted_values, "'" . $this->Ascape($value) . "'");
 			  array_push ($values, $value . "");
 			  array_push ($questionmarks, "?");
 		    }
@@ -675,7 +674,6 @@
 		  $this->APquery($sql,$vals);
 		  return 1;
 		}
-
 
 		function AhtmlTableRecordSelect($table, $show_field, $value_field, $form_field_name, $selected_value = '', $filter = '', $show_field_sql = '', $showblank = 1, $onChange='', $sort = '')
 		{
