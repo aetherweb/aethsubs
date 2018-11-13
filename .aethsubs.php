@@ -817,6 +817,36 @@
 		  return "<input type='checkbox' name='$name' value='$checkedvalue' $extrajs $checked_string />";
 		}
 
+		function Ahtmlselect ($name, $selected, $top_item_name, $top_item_value, $onchange, $items, $class = '', $extrajs = '')
+		{
+		  $result = '<select name="' . $name . '" onchange="' . $onchange . '" class="'.$class.'" '.$extrajs.'>' . "\n";
+
+		  # Now the top item
+			if ($selected == $top_item_value)
+			{
+			  $result .= '<option value="' . $top_item_value . '" selected="selected">' . $top_item_name . '</option>' . "\n";
+			}
+			else
+			{
+			  $result .= '<option value="' . $top_item_value . '">' . $top_item_name . '</option>' . "\n";
+			}
+
+		  foreach ($items as $item)
+		  {
+		    if ($item == $selected)
+		    {
+		      $result .= '<option value="' . $item . '" selected="selected">' . $item . '</option>' . "\n";
+		    }
+		    else
+		    {
+		      $result .= '<option value="' . $item . '">' . $item . '</option>' . "\n";
+		    }
+		  }
+
+		  $result .= "</select>";
+
+		  return $result;
+		}
 
 	}
 
