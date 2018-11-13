@@ -848,6 +848,18 @@
 		  return $result;
 		}
 
+		function dateValid($value)
+		{
+			if (preg_match("/(\d+)\D(\d+)\D(\d+)/", $value, $matches))
+			{
+				return checkdate($matches[2], $matches[1], $matches[3]);
+			}
+			else
+			{
+				return false;
+			}
+		}
+
 	}
 
 
