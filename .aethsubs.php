@@ -43,7 +43,6 @@
 	////////////////////////////////////////////////
 
 
-
 	////////////////////////////////////////////////
 	// AethSubs class definition
 	////////////////////////////////////////////////
@@ -87,6 +86,56 @@
 	    {
 	    	//
 	    }
+
+		function AmakeSID ($table, $field, $length = 30)
+		{
+			// Generates a $length character session id using
+			// sha256 and current time + randomness
+			//global $ae; used to check for pre-exist in db
+			// sha256 makes this not worthwhile in universe
+			// life timescale
+		    $sid = "" . (intval(rand(1,99)) * time()) . "_" . (intval(rand(1,100000000000))) . "" . microtime();
+		    $sid = hash('sha256', $sid);
+		    return substr($sid,0,$length);
+		}
+
+	    function Ascape($val)
+	    {
+	    	return mysqli_real_escape_string($this->ASPSERVER, $val);
+	    }
+
+		function Amailer($to, $replyto, $subject, $organisation, $content, $attachments = array(), $replyname = '')
+		{
+			// TODO - ATTACHMENTS ARE NOT IMPLEMENTED YET.
+			// TODO - SANITISE DATA BEFORE SENDING. ZERO SANITISATION DONE.
+
+			// Reply to.. ////////////////////////////////////////////
+			if (preg_match("/^(.+)\s*\<(.+)\>$/", $replyto, $matches))
+			{
+				$reply     = $matches[2];
+				$replyname = $matches[1];
+			}
+			else
+			{
+				$reply     = $replyto;
+				if ($replyname == '')
+				{
+					$replyname = $replyto;
+				}
+			}
+			//////////////////////////////////////////////////////////
+
+			$headers = "MIME-Version: 1.0" . "\r\n";
+			$headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+			if (defined(ORG_NAME) and defined(ORG_EMAIL))
+			{
+				$headers .= "From: ".ORG_NAME." <".ORG_EMAIL.">\r\n";
+			}
+			$headers .= "Reply-To: $replyname <$replyto>\r\n";
+
+			mail($to, $subject, "<html>\n" . $content . "\n</html>", $headers);
+		}
+
 
 		# image resizer to resize an image
 		function AresizeImage($maxwidth, $maxheight, $src_filename, $dest_filename, $forceup = 1, $verbose = 0)
@@ -317,7 +366,7 @@
 
 		function Adie($msg)
 		{
-			ShowStuff($msg);
+			$this->ShowStuff($msg);
 			die();
 		}
 
