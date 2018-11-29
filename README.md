@@ -16,6 +16,9 @@ Create a site config file here:
 /home/mysite/inc/config.php
 
 Containing eg.
+	// Who owns this site (used as official FROM in emails)
+	define('ORG_NAME', "Aetherweb Limited");
+	define('ORG_EMAIL', "info@aetherweb.co.uk");
 
 	define('ROOT', "/home/your-site-root/"); // above public_html
 	

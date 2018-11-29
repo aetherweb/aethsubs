@@ -15,6 +15,10 @@
 	// The values to set in that file are:
 
 	/*
+	// Who owns this site (used as official FROM in emails)
+	define('ORG_NAME', "Aetherweb Limited");
+	define('ORG_EMAIL', "info@aetherweb.co.uk");
+	
 	define('ROOT', "/home/your-site-root/"); // above public_html
 	
 	define('ADMIN_EMAIL', 'your email');
@@ -108,6 +112,9 @@
 		{
 			// TODO - ATTACHMENTS ARE NOT IMPLEMENTED YET.
 			// TODO - SANITISE DATA BEFORE SENDING. ZERO SANITISATION DONE.
+			// $organisation is not used now, present for legacy
+			// compatibility
+
 
 			// Reply to.. ////////////////////////////////////////////
 			if (preg_match("/^(.+)\s*\<(.+)\>$/", $replyto, $matches))
@@ -127,10 +134,11 @@
 
 			$headers = "MIME-Version: 1.0" . "\r\n";
 			$headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-			if (defined(ORG_NAME) and defined(ORG_EMAIL))
+			if (defined("ORG_NAME") and defined("ORG_EMAIL"))
 			{
 				$headers .= "From: ".ORG_NAME." <".ORG_EMAIL.">\r\n";
 			}
+
 			$headers .= "Reply-To: $replyname <$replyto>\r\n";
 
 			mail($to, $subject, "<html>\n" . $content . "\n</html>", $headers);
