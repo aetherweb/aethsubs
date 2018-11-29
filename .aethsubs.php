@@ -120,7 +120,7 @@
 	        return $results;
 	    }    
 
-		function AmakeSID ($table, $field, $length = 30)
+		function AmakeSID ($length = 30)
 		{
 			// Generates a $length character session id using
 			// sha256 and current time + randomness
