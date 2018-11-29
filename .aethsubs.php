@@ -18,7 +18,7 @@
 	// Who owns this site (used as official FROM in emails)
 	define('ORG_NAME', "Aetherweb Limited");
 	define('ORG_EMAIL', "info@aetherweb.co.uk");
-	
+
 	define('ROOT', "/home/your-site-root/"); // above public_html
 	
 	define('ADMIN_EMAIL', 'your email');
@@ -90,6 +90,35 @@
 	    {
 	    	//
 	    }
+
+	   function dirList ($directory, $pattern = '')
+	    {
+	        // create an array to hold directory list
+	        $results = array();
+
+	        // create a handler for the directory
+	        $handler = opendir($directory);
+
+	        // keep going until all files in directory have been read
+	        while ($file = readdir($handler)) 
+	        {
+	            // if $file isn't this directory or its parent,
+	            // add it to the results array
+	            if ($file != '.' && $file != '..')
+				{
+					if (($pattern == '') or (preg_match($pattern, $file)))
+					{
+					    $results[] = $file;
+					}
+				}
+	        }
+
+	        // tidy up: close the handler
+	        closedir($handler);
+
+	        // done!
+	        return $results;
+	    }    
 
 		function AmakeSID ($table, $field, $length = 30)
 		{
@@ -267,7 +296,7 @@
 			
 			if ($verbose)
 			{
-				mail('jeffsnox@gmail.com', 'IM process results', $verror . ' ' . $error);
+				mail(ADMIN_EMAIL, 'IM process results', $verror . ' ' . $error);
 			}
 			return $error;
 		}
