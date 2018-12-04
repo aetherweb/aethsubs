@@ -134,6 +134,8 @@
 
 	    function Ascape($val)
 	    {
+			// In case we have not yet
+			$this->DBConnect();
 	    	return mysqli_real_escape_string($this->ASPSERVER, $val);
 	    }
 
@@ -435,6 +437,8 @@
 
 		function APsqlError()
 		{
+			// In case we have not yet
+			$this->DBConnect();
 			return mysqli_error($this->ASPSERVER);
 		}
 
